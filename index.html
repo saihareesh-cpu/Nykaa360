@@ -31,7 +31,7 @@
 
 <div id="loginSection">
   <input type="email" id="email" placeholder="Enter your corporate email">
-  <button onclick="login()">Send OTP</button>
+  <button id="sendOtpBtn">Send OTP</button>
 </div>
 
 <div id="dashboardSection" class="hidden">
@@ -41,7 +41,7 @@
   <div id="nominationSection">
     <p>Select minimum 5 and maximum 7 employees:</p>
     <select multiple id="employeeSelect"></select>
-    <button onclick="submitNomination()">Submit Nomination</button>
+    <button id="submitNominationBtn">Submit Nomination</button>
   </div>
 
   <div id="lockedMessage" class="hidden">
@@ -52,6 +52,8 @@
 
 <script>
 
+document.addEventListener("DOMContentLoaded", function() {
+
   // 🔴 REPLACE THESE TWO VALUES
   const SUPABASE_URL = ""https://rmtlqloytdawcxtzatfi.supabase.co"";
   const SUPABASE_ANON_KEY = ""sb_publishable_4Co6mEpJZlKA2R6rnEBbjQ_pPDLPF9h"";
@@ -60,8 +62,13 @@
 
   let currentUser = null;
 
-  // LOGIN FUNCTION
-  window.login = async function() {
+  const loginSection = document.getElementById("loginSection");
+  const dashboardSection = document.getElementById("dashboardSection");
+  const sendOtpBtn = document.getElementById("sendOtpBtn");
+  const submitNominationBtn = document.getElementById("submitNominationBtn");
+
+  // SEND OTP
+  sendOtpBtn.addEventListener("click", async function() {
 
     const email = document.getElementById("email").value;
 
@@ -83,22 +90,19 @@
     } else {
       alert("OTP sent. Check your email.");
     }
-  }
+  });
 
   // HANDLE LOGIN SESSION
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
 
     if (session) {
       currentUser = session.user;
-
-      document.getElementById("loginSection").classList.add("hidden");
-      document.getElementById("dashboardSection").classList.remove("hidden");
-
+      loginSection.classList.add("hidden");
+      dashboardSection.classList.remove("hidden");
       loadDashboard();
     }
   });
 
-  // LOAD DASHBOARD
   async function loadDashboard() {
 
     const { data: employee } = await supabaseClient
@@ -129,7 +133,6 @@
     loadEmployees(employee.id);
   }
 
-  // LOAD EMPLOYEE LIST
   async function loadEmployees(selfId) {
 
     const { data } = await supabaseClient
@@ -137,7 +140,6 @@
       .select('id,name,designation');
 
     const select = document.getElementById("employeeSelect");
-
     select.innerHTML = "";
 
     data.forEach(emp => {
@@ -151,7 +153,7 @@
   }
 
   // SUBMIT NOMINATION
-  async function submitNomination() {
+  submitNominationBtn.addEventListener("click", async function() {
 
     const selected = Array.from(
       document.getElementById("employeeSelect").selectedOptions
@@ -185,8 +187,9 @@
 
     alert("Nomination Submitted Successfully.");
     location.reload();
-  }
+  });
 
+});
 </script>
 
 </body>
