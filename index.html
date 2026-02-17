@@ -1,197 +1,144 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Nykaa Leadership 360 Feedback</title>
+  <title>360 Feedback – FY26</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body {
-      font-family: Arial;
-      max-width: 650px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    h2 {
-      text-align: center;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 15px;
-    }
-    select, textarea {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border-radius: 5px;
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px;
-      width: 100%;
-      background: black;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 14px;
-    }
-    .success {
-      text-align: center;
-      font-size: 18px;
-      font-weight: bold;
-    }
+    body { font-family: Arial; max-width: 800px; margin: 40px auto; }
+    h2 { text-align: center; }
+    button { padding: 10px; margin-top: 10px; }
+    select { width: 100%; height: 150px; }
+    .hidden { display:none; }
   </style>
 </head>
-
 <body>
 
-<h2>Nykaa Leadership 360 Feedback</h2>
-<div id="leaderName"></div>
+<h2>Welcome to 360° Feedback – FY26</h2>
 
-<form id="feedbackForm">
+<div id="loginSection">
+  <input type="email" id="email" placeholder="Enter your corporate email">
+  <button onclick="login()">Send OTP</button>
+</div>
 
-  <label>1. Customer Obsession</label>
-  <select required id="customer">
-    <option value="">Select Rating</option>
-    <option value="1">1 - Needs Improvement</option>
-    <option value="2">2</option>
-    <option value="3">3 - Meets Expectations</option>
-    <option value="4">4</option>
-    <option value="5">5 - Role Model</option>
-  </select>
+<div id="dashboardSection" class="hidden">
 
-  <label>2. Ownership & Accountability</label>
-  <select required id="ownership">
-    <option value="">Select Rating</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
+  <h3 id="welcomeText"></h3>
 
-  <label>3. Agility & Speed</label>
-  <select required id="agility">
-    <option value="">Select Rating</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
+  <div id="nominationSection">
+    <p>Select minimum 5 and maximum 7 employees:</p>
 
-  <label>4. Collaboration</label>
-  <select required id="collaboration">
-    <option value="">Select Rating</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
+    <select multiple id="employeeSelect"></select>
 
-  <label>5. Innovation & Problem Solving</label>
-  <select required id="innovation">
-    <option value="">Select Rating</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
+    <button onclick="submitNomination()">Submit Nomination</button>
+  </div>
 
-  <label>6. Integrity & Values</label>
-  <select required id="integrity">
-    <option value="">Select Rating</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    <option value="5">5</option>
-  </select>
+  <div id="lockedMessage" class="hidden">
+    <h4>Your nomination has been submitted and locked.</h4>
+  </div>
 
-  <label>Biggest Strength</label>
-  <textarea required id="strength"></textarea>
-
-  <label>Top Development Area</label>
-  <textarea required id="improvement"></textarea>
-
-  <button type="submit">Submit Feedback</button>
-
-</form>
+</div>
 
 <script>
 
-  const SUPABASE_URL = "https://rmtlqloytdawcxtzatfi.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_4Co6mEpJZlKA2R6rnEBbjQ_pPDLPF9h";
+  const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL";
+  const SUPABASE_ANON_KEY = ""sb_publishable_4Co6mEpJZlKA2R6rnEBbjQ_pPDLPF9h"";
 
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
+  let currentUser = null;
 
-  async function loadAssignment() {
+  async function login() {
+    const email = document.getElementById("email").value;
 
-    if (!token) {
-      document.body.innerHTML = "<h2>Invalid Link</h2>";
-      return;
-    }
+    await supabase.auth.signInWithOtp({ email });
 
-    const { data: assignment } = await supabaseClient
-      .from('assignments')
-      .select('*')
-      .eq('unique_token', token)
-      .single();
-
-    if (!assignment || assignment.submitted) {
-      document.body.innerHTML = "<h2>Link expired or already submitted.</h2>";
-      return;
-    }
-
-    const { data: employee } = await supabaseClient
-      .from('employees')
-      .select('name')
-      .eq('id', assignment.employee_id)
-      .single();
-
-    if (employee) {
-      document.getElementById("leaderName").innerHTML =
-        "<strong>Leader: </strong> " + employee.name;
-    }
+    alert("Check your email for OTP link.");
   }
 
-  loadAssignment();
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (session) {
+      currentUser = session.user;
+      document.getElementById("loginSection").classList.add("hidden");
+      document.getElementById("dashboardSection").classList.remove("hidden");
 
-  document.getElementById("feedbackForm")
-    .addEventListener("submit", async (e) => {
+      loadDashboard();
+    }
+  });
 
-      e.preventDefault();
+  async function loadDashboard() {
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', currentUser.email)
+      .single();
 
-      const { data: assignment } = await supabaseClient
-        .from('assignments')
-        .select('*')
-        .eq('unique_token', token)
-        .single();
+    document.getElementById("welcomeText").innerText =
+      "Welcome " + employee.name;
 
-      await supabaseClient.from('feedback').insert([{
-        assignment_id: assignment.id,
-        rating_customer_focus: document.getElementById("customer").value,
-        rating_ownership: document.getElementById("ownership").value,
-        rating_agility: document.getElementById("agility").value,
-        rating_collaboration: document.getElementById("collaboration").value,
-        rating_innovation: document.getElementById("innovation").value,
-        rating_integrity: document.getElementById("integrity").value,
-        comment_strength: document.getElementById("strength").value,
-        comment_improvement: document.getElementById("improvement").value
+    const { data: nominations } = await supabase
+      .from('nominations')
+      .select('*')
+      .eq('nominator_id', employee.id);
+
+    if (nominations.length > 0) {
+      document.getElementById("nominationSection").classList.add("hidden");
+      document.getElementById("lockedMessage").classList.remove("hidden");
+      return;
+    }
+
+    loadEmployees(employee.id);
+  }
+
+  async function loadEmployees(selfId) {
+    const { data } = await supabase
+      .from('employees')
+      .select('id,name,designation');
+
+    const select = document.getElementById("employeeSelect");
+
+    data.forEach(emp => {
+      if (emp.id !== selfId) {
+        let option = document.createElement("option");
+        option.value = emp.id;
+        option.text = emp.name + " - " + emp.designation;
+        select.appendChild(option);
+      }
+    });
+  }
+
+  async function submitNomination() {
+    const selected = Array.from(
+      document.getElementById("employeeSelect").selectedOptions
+    );
+
+    if (selected.length < 5 || selected.length > 7) {
+      alert("Select between 5 and 7 employees.");
+      return;
+    }
+
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', currentUser.email)
+      .single();
+
+    for (let option of selected) {
+      await supabase.from('nominations').insert([{
+        nominator_id: employee.id,
+        nominee_id: option.value,
+        cycle_name: 'FY26'
       }]);
 
-      await supabaseClient
-        .from('assignments')
-        .update({ submitted: true })
-        .eq('unique_token', token);
+      await supabase.from('assignments').insert([{
+        employee_id: employee.id,
+        reviewer_id: option.value,
+        unique_token: crypto.randomUUID()
+      }]);
+    }
 
-      document.body.innerHTML =
-        "<div class='success'>Thank you. Feedback submitted successfully.</div>";
-    });
+    alert("Nomination Submitted Successfully.");
+    location.reload();
+  }
 
 </script>
 
