@@ -2,15 +2,29 @@
 <html>
 <head>
   <title>360 Feedback – FY26</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    body { font-family: Arial; max-width: 800px; margin: 40px auto; }
+    body { 
+      font-family: Arial; 
+      max-width: 800px; 
+      margin: 40px auto; 
+    }
     h2 { text-align: center; }
-    button { padding: 10px; margin-top: 10px; }
-    select { width: 100%; height: 150px; }
-    .hidden { display:none; }
+    input, button {
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    select { 
+      width: 100%; 
+      height: 200px; 
+      margin-top: 15px;
+    }
+    .hidden { display: none; }
   </style>
 </head>
+
 <body>
 
 <h2>Welcome to 360° Feedback – FY26</h2>
@@ -26,9 +40,7 @@
 
   <div id="nominationSection">
     <p>Select minimum 5 and maximum 7 employees:</p>
-
     <select multiple id="employeeSelect"></select>
-
     <button onclick="submitNomination()">Submit Nomination</button>
   </div>
 
@@ -40,24 +52,45 @@
 
 <script>
 
+  // 🔴 REPLACE THESE TWO VALUES
   const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL";
-  const SUPABASE_ANON_KEY = ""sb_publishable_4Co6mEpJZlKA2R6rnEBbjQ_pPDLPF9h"";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY";
 
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUser = null;
 
-  async function login() {
+  // LOGIN FUNCTION
+  window.login = async function() {
+
     const email = document.getElementById("email").value;
 
-    await supabase.auth.signInWithOtp({
+    if (!email) {
+      alert("Please enter email.");
+      return;
+    }
 
-    alert("Check your email for OTP link.");
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Error sending OTP.");
+    } else {
+      alert("OTP sent. Check your email.");
+    }
   }
 
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  // HANDLE LOGIN SESSION
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+
     if (session) {
       currentUser = session.user;
+
       document.getElementById("loginSection").classList.add("hidden");
       document.getElementById("dashboardSection").classList.remove("hidden");
 
@@ -65,22 +98,29 @@
     }
   });
 
+  // LOAD DASHBOARD
   async function loadDashboard() {
-    const { data: employee } = await supabase
+
+    const { data: employee } = await supabaseClient
       .from('employees')
       .select('*')
       .eq('email', currentUser.email)
       .single();
 
+    if (!employee) {
+      alert("Employee record not found.");
+      return;
+    }
+
     document.getElementById("welcomeText").innerText =
       "Welcome " + employee.name;
 
-    const { data: nominations } = await supabase
+    const { data: nominations } = await supabaseClient
       .from('nominations')
       .select('*')
       .eq('nominator_id', employee.id);
 
-    if (nominations.length > 0) {
+    if (nominations && nominations.length > 0) {
       document.getElementById("nominationSection").classList.add("hidden");
       document.getElementById("lockedMessage").classList.remove("hidden");
       return;
@@ -89,12 +129,16 @@
     loadEmployees(employee.id);
   }
 
+  // LOAD EMPLOYEE LIST
   async function loadEmployees(selfId) {
-    const { data } = await supabase
+
+    const { data } = await supabaseClient
       .from('employees')
       .select('id,name,designation');
 
     const select = document.getElementById("employeeSelect");
+
+    select.innerHTML = "";
 
     data.forEach(emp => {
       if (emp.id !== selfId) {
@@ -106,7 +150,9 @@
     });
   }
 
+  // SUBMIT NOMINATION
   async function submitNomination() {
+
     const selected = Array.from(
       document.getElementById("employeeSelect").selectedOptions
     );
@@ -116,20 +162,21 @@
       return;
     }
 
-    const { data: employee } = await supabase
+    const { data: employee } = await supabaseClient
       .from('employees')
       .select('*')
       .eq('email', currentUser.email)
       .single();
 
     for (let option of selected) {
-      await supabase.from('nominations').insert([{
+
+      await supabaseClient.from('nominations').insert([{
         nominator_id: employee.id,
         nominee_id: option.value,
         cycle_name: 'FY26'
       }]);
 
-      await supabase.from('assignments').insert([{
+      await supabaseClient.from('assignments').insert([{
         employee_id: employee.id,
         reviewer_id: option.value,
         unique_token: crypto.randomUUID()
